@@ -1,0 +1,23 @@
+nota: este es el primer programa casi completo
+nota: programa funcional
+nota: programando
+Nombre_del_ejercicio prueba_funcional
+
+variables  
+    tipo entero nombre $edad valor_inicial 10
+fin_variables 
+Flujo
+    si $edad es_igual_que 40 entonces
+      mientras $edad es_mayor_o_igual_que 40:
+           inicio_para $personas en $edades
+              si  $lista en_la_posicion $personas entonces
+                mostrar_en_pantalla $edades en_la_posicion $personas
+              sino entonces 
+                $lista en_la_posicion $personas = $personas + 10
+              fin_si  
+            fin_para
+      fin_mientras
+sino entonces
+    mostrar_en_pantalla "Eres muy joven "
+fin_si
+fin_flujo
