@@ -20,7 +20,8 @@ class lenguajeutbVisitor(ParseTreeVisitor):
     # Visit a parse tree produced by lenguajeutbParser#mensaje.
     def visitMensaje(self, ctx:lenguajeutbParser.MensajeContext):
         if ctx.n is not None:
-            print("#",ctx.n.text)
+            comentario = (ctx.n.text).split(":")
+            print("#",comentario[1])
         return self.visitChildren(ctx)
 
 
@@ -38,30 +39,31 @@ class lenguajeutbVisitor(ParseTreeVisitor):
     # Visit a parse tree produced by lenguajeutbParser#declaracion.
     def visitDeclaracion(self, ctx:lenguajeutbParser.DeclaracionContext):
 
-        if ctx.entero is not None and ctx.v_entero is not None:
+        if ctx.entero is not None:
             resultado = None
-
-            for hijo in ctx.children:
-                 resultado = self.visit(hijo)
-            if resultado == int:
-                var = (ctx.entero.text).split('$')
-                print(var[1], ".int", (str(ctx.v_entero)))
-                lenguajeutbVisitor.tabla_de_simbolos[ctx.entero.text] = int
+            if ctx.v_entero is not None:
+                resultado = self.visit(ctx.v_entero)
+                if resultado == int:
+                    var = (ctx.entero.text).split('$')
+                    print(var[1], ".int")
+                    lenguajeutbVisitor.tabla_de_simbolos[ctx.entero.text] = int
+                else:
+                    raise ValueError
             else:
-                var = (ctx.entero.text).split('$')
-                print(var[1], ".int", (str(ctx.v_entero)))
-
-        if ctx.entero is not None and ctx.v_entero is None:
-            lenguajeutbVisitor.tabla_de_simbolos[ctx.entero.text] = int
+                lenguajeutbVisitor.tabla_de_simbolos[ctx.entero.text] = int
 
         if ctx.real is not None:
             resultado = None
-            for hijo in ctx.children:
-                resultado = self.visit(hijo)
-            if resultado == float:
-                lenguajeutbVisitor.tabla_de_simbolos[ctx.real.text] = float
+            if ctx.v_real is not None:
+                resultado = self.visit(ctx.v_real)
+                if resultado == float:
+                    var = (ctx.real.text).split('$')
+                    print(var[1], ".float",)
+                    lenguajeutbVisitor.tabla_de_simbolos[ctx.real.text] = float
+                else:
+                    raise ValueError
             else:
-                raise ValueError
+                lenguajeutbVisitor.tabla_de_simbolos[ctx.real.text] = float
 
         if ctx.texto is not None:
             resultado = None
@@ -135,17 +137,111 @@ class lenguajeutbVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by lenguajeutbParser#expresion.
     def visitExpresion(self, ctx:lenguajeutbParser.ExpresionContext):
-        return self.visitChildren(ctx)
+        resultado, operador, primera_iteracion = None, None, True
+        for hijo in ctx.children:
+            if primera_iteracion:
+                primera_iteracion = False
+                resultado = self.visit(hijo)
+            elif type(hijo) == TerminalNodeImpl:
+                operador = hijo.getText()
+            else:
+                segundo_operador = self.visit(hijo)
+                if resultado != segundo_operador:
+                    if resultado == int:
+                        if segundo_operador == float:
+                            resultado = float
+                        elif segundo_operador == bool:
+                            segundo_operador = int
+                        else:
+                            raise ValueError
+                    elif resultado == bool:
+                        if segundo_operador == int:
+                            resultado = int
+                        else:
+                            raise ValueError
+                    elif resultado == float:
+                        if segundo_operador == int:
+                            segundo_operador = float
+                        else:
+                            raise ValueError
+                    else:
+                        raise ValueError
+                if operador == "+":
+                    pass
+                else:
+                    if operador == "-":
+                        pass
+
+        return resultado
 
 
     # Visit a parse tree produced by lenguajeutbParser#div.
     def visitDiv(self, ctx:lenguajeutbParser.DivContext):
-        return self.visitChildren(ctx)
+        resultado, operador, primera_iteracion = None, None, True
+        for hijo in ctx.children:
+            if primera_iteracion:
+                primera_iteracion = False
+                resultado = self.visit(hijo)
+            elif type(hijo) == TerminalNodeImpl:
+                operador = hijo.getText()
+            else:
+                resultado, operador, primera_iteracion = None, None, True
+                for hijo in ctx.children:
+                    if primera_iteracion:
+                        primera_iteracion = False
+                        resultado = self.visit(hijo)
+                    elif type(hijo) == TerminalNodeImpl:
+                        operador = hijo.getText()
+                    else:
+                        segundo_operando = self.visit(hijo)
+                        # TODO al momento de traducir hay que convertir el operando correspondiente
+                        if resultado != segundo_operando:
+                            if resultado == int:
+                                if segundo_operando == float:
+                                    resultado = float
+                                elif segundo_operando == bool:
+                                    segundo_operando = int
+                                else:
+                                    raise ValueError
+                            elif resultado == bool:
+                                if segundo_operando == int:
+                                    resultado = int
+                                else:
+                                    raise ValueError
+                            elif resultado == float:
+                                if segundo_operando == int:
+                                    segundo_operando = float
+                                else:
+                                    raise ValueError
+                            else:
+                                raise ValueError
+
+                        if operador == "/":
+                            pass
+                        else:
+                            pass
+        return resultado
 
 
     # Visit a parse tree produced by lenguajeutbParser#atom.
     def visitAtom(self, ctx:lenguajeutbParser.AtomContext):
-        return self.visitChildren(ctx)
+        if ctx.e is not None:
+            return int
+        elif ctx.b is not None:
+            return bool
+        elif ctx.t is not None:
+            return str
+        elif ctx.r is not None:
+            return float
+        elif ctx.exp is not None:
+            return self.visit(ctx.exp)
+        elif ctx.iden is not None:
+            if ctx.iden.text not in lenguajeutbVisitor.tabla_de_simbolos:
+                raise Exception
+            else:
+                return lenguajeutbVisitor.tabla_de_simbolos[ctx.iden.text]
+        else:
+            return self.visit(ctx.conv)
 
 
     # Visit a parse tree produced by lenguajeutbParser#condicion.
@@ -175,6 +271,11 @@ class lenguajeutbVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by lenguajeutbParser#imprimir.
     def visitImprimir(self, ctx:lenguajeutbParser.ImprimirContext):
+        if ctx.exp is not None:
+            resultado = None
+            for hijo in ctx.children:
+                resultado = self.visit(hijo)
+        print(resultado)
         return self.visitChildren(ctx)
 
 
